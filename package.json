@@ -1,6 +1,7 @@
 {
   "dependencies": {
-    "jsonwebtoken": "^8.5.1"
+    "force": "^0.0.3",
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^8.5.9"
