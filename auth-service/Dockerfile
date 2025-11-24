@@ -8,8 +8,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Instalar dependencias
-RUN npm ci --only=production
+# Instalar dependencias - 👈 CAMBIADO (sin --only=production)
+RUN npm ci
 
 # Copiar código fuente
 COPY src/ ./src/
@@ -18,11 +18,11 @@ COPY src/ ./src/
 RUN npm run build
 
 # Exponer puerto
-EXPOSE 3000
+EXPOSE 3010
 
 # Variables de entorno por defecto
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=3010
 
 # Comando para ejecutar la aplicación
 CMD ["node", "dist/server.js"]

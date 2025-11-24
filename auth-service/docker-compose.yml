@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # Base de datos MySQL para desarrollo
+  mysql:
+    image: mysql:8.0
+    container_name: auth-mysql-dev
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: genosentinel
+    ports:
+      - "3307:3306"
+    volumes:
+      - ../../database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - auth-network
+
+  # Microservicio de Autenticación
+  auth-service:
+    build: .
+    container_name: auth-service-dev
+    ports:
+      - "3010:3010"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=genosentinel
+    volumes:
+      - ./src:/app/src  # Montar código para desarrollo
+      - ./package.json:/app/package.json
+    depends_on:
+      - mysql
+    networks:
+      - auth-network
+    command: npm run dev  # Usar dev para desarrollo
+
+networks:
+  auth-network:
+    driver: bridge
