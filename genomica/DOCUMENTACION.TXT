@@ -1,0 +1,404 @@
+# Microservicio Genómica - GenoSentinel
+
+Microservicio para la gestión de información genómica y variantes genéticas de pacientes oncológicos, parte del sistema GenoSentinel.
+
+## Descripción
+
+Este microservicio implementa la funcionalidad del **Microservicio 2 (Genómica)** del proyecto GenoSentinel, desarrollado con Node.js, Express y MySQL. Gestiona genes de interés oncológico, variantes genéticas (mutaciones) y reportes de variantes asociadas a pacientes específicos.
+
+## Tecnologías Utilizadas
+
+- **Node.js** v22.13.0
+- **Express.js** v4.18.2 - Framework web
+- **MySQL** - Base de datos relacional
+- **Joi** - Validación de datos
+- **Swagger** - Documentación de API
+- **Helmet** - Seguridad HTTP
+- **CORS** - Control de acceso entre orígenes
+- **Morgan** - Logging de peticiones HTTP
+
+## Estructura del Proyecto
+
+```
+microservicio-genomica/
+├── database/
+│   └── schema.sql              # Script de creación de BD
+├── src/
+│   ├── config/
+│   │   ├── database.js         # Configuración de MySQL
+│   │   └── swagger.js          # Configuración de Swagger
+│   ├── controllers/
+│   │   ├── gene.controller.js
+│   │   ├── variant.controller.js
+│   │   └── patientVariantReport.controller.js
+│   ├── dtos/
+│   │   ├── gene.dto.js
+│   │   ├── variant.dto.js
+│   │   └── patientVariantReport.dto.js
+│   ├── models/
+│   │   ├── gene.model.js
+│   │   ├── variant.model.js
+│   │   └── patientVariantReport.model.js
+│   ├── routes/
+│   │   ├── gene.routes.js
+│   │   ├── variant.routes.js
+│   │   └── patientVariantReport.routes.js
+│   └── index.js                # Punto de entrada
+├── .env                        # Variables de entorno
+├── .gitignore
+├── package.json
+└── README.md
+```
+
+## Entidades del Dominio
+
+### Gene (Gen de Interés)
+Catálogo de genes relevantes en oncología con sus funciones y descripciones.
+
+**Campos:**
+- `id` (PK): Identificador único
+- `symbol`: Símbolo del gen (ej: BRCA1)
+- `fullName`: Nombre completo del gen
+- `functionSummary`: Resumen de la función del gen
+
+### GeneticVariant (Variante Genética)
+Registro de mutaciones específicas con ubicación, referencia y efecto.
+
+**Campos:**
+- `id` (PK): Identificador único
+- `uuid`: Identificador UUID
+- `geneId` (FK): Relación con Gen de Interés
+- `chromosome`: Cromosoma (ej: chr17)
+- `position`: Posición en el cromosoma
+- `referenceBase`: Base de referencia (ej: A)
+- `alternateBase`: Base alternativa (ej: G)
+- `impact`: Impacto de la variante (ej: Missense, Frameshift)
+
+### PatientVariantReport (Reporte de Variantes del Paciente)
+Librería de mutaciones encontradas en un paciente específico.
+
+**Campos:**
+- `id` (PK): Identificador único
+- `uuid`: Identificador UUID
+- `patientId`: ID del paciente (consultable en Microservicio Clínica)
+- `variantId` (FK): Relación con Variante Genética
+- `detectionDate`: Fecha de detección de la variante
+- `alleleFrequency`: Frecuencia alélica (VAF) en formato decimal
+
+## Instalación
+
+### Prerrequisitos
+
+- Node.js v22.13.0 o superior
+- MySQL 8.0 o superior
+- npm o pnpm
+
+### Pasos de Instalación
+
+1. **Clonar el repositorio o descargar los archivos**
+
+2. **Instalar dependencias**
+```bash
+cd microservicio-genomica
+npm install
+```
+
+3. **Configurar variables de entorno**
+
+Editar el archivo `.env` con tus credenciales de MySQL:
+
+```env
+PORT=3002
+NODE_ENV=development
+
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=tu_password
+DB_NAME=genomica_db
+
+CORS_ORIGIN=*
+CLINICAL_SERVICE_URL=http://localhost:3001
+```
+
+4. **Crear la base de datos**
+
+Ejecutar el script SQL para crear la base de datos y las tablas:
+
+```bash
+mysql -u root -p < database/schema.sql
+```
+
+O desde MySQL:
+```sql
+source /ruta/completa/database/schema.sql
+```
+
+5. **Iniciar el servidor**
+
+```bash
+# Modo desarrollo (con nodemon)
+npm run dev
+
+# Modo producción
+npm start
+```
+
+El servidor estará disponible en `http://localhost:3002`
+
+## Endpoints de la API
+
+### Genes
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| POST | `/api/genes` | Crear un nuevo gen |
+| GET | `/api/genes` | Obtener todos los genes |
+| GET | `/api/genes/:id` | Obtener un gen por ID |
+| PUT | `/api/genes/:id` | Actualizar un gen |
+| DELETE | `/api/genes/:id` | Eliminar un gen |
+
+### Variantes Genéticas
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| POST | `/api/variants` | Crear una nueva variante |
+| GET | `/api/variants` | Obtener todas las variantes |
+| GET | `/api/variants/:id` | Obtener una variante por ID |
+| GET | `/api/variants/uuid/:uuid` | Obtener una variante por UUID |
+| GET | `/api/variants/gene/:geneId` | Obtener variantes por gen |
+| PUT | `/api/variants/:id` | Actualizar una variante |
+| DELETE | `/api/variants/:id` | Eliminar una variante |
+
+### Reportes de Variantes de Pacientes
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| POST | `/api/patient-variant-reports` | Crear un nuevo reporte |
+| GET | `/api/patient-variant-reports` | Obtener todos los reportes |
+| GET | `/api/patient-variant-reports/:id` | Obtener un reporte por ID |
+| GET | `/api/patient-variant-reports/uuid/:uuid` | Obtener un reporte por UUID |
+| GET | `/api/patient-variant-reports/patient/:patientId` | Obtener reportes por paciente |
+| GET | `/api/patient-variant-reports/variant/:variantId` | Obtener reportes por variante |
+| PUT | `/api/patient-variant-reports/:id` | Actualizar un reporte |
+| DELETE | `/api/patient-variant-reports/:id` | Eliminar un reporte |
+
+### Otros Endpoints
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/` | Información del servicio |
+| GET | `/health` | Health check del servicio |
+| GET | `/api-docs` | Documentación Swagger UI |
+| GET | `/api-docs.json` | Especificación OpenAPI JSON |
+
+## Documentación Swagger
+
+La documentación interactiva de la API está disponible en:
+
+```
+http://localhost:3002/api-docs
+```
+
+Swagger UI permite probar todos los endpoints directamente desde el navegador.
+
+## Ejemplos de Uso
+
+### Crear un Gen
+
+```bash
+curl -X POST http://localhost:3002/api/genes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "symbol": "BRCA1",
+    "fullName": "Breast Cancer Type 1 Susceptibility Protein",
+    "functionSummary": "Gen supresor de tumores involucrado en la reparación del ADN"
+  }'
+```
+
+### Crear una Variante Genética
+
+```bash
+curl -X POST http://localhost:3002/api/variants \
+  -H "Content-Type: application/json" \
+  -d '{
+    "geneId": 1,
+    "chromosome": "chr17",
+    "position": "43094464",
+    "referenceBase": "A",
+    "alternateBase": "G",
+    "impact": "Missense"
+  }'
+```
+
+### Crear un Reporte de Variante de Paciente
+
+```bash
+curl -X POST http://localhost:3002/api/patient-variant-reports \
+  -H "Content-Type: application/json" \
+  -d '{
+    "patientId": 1,
+    "variantId": 1,
+    "detectionDate": "2024-01-15",
+    "alleleFrequency": 0.4523
+  }'
+```
+
+### Obtener Reportes de un Paciente
+
+```bash
+curl http://localhost:3002/api/patient-variant-reports/patient/1
+```
+
+## Validación de Datos
+
+El microservicio utiliza **Joi** para validar todos los datos de entrada. Los DTOs (Data Transfer Objects) definen las reglas de validación para cada entidad.
+
+### Ejemplo de Validación
+
+```javascript
+// Crear un gen sin símbolo (error)
+{
+  "fullName": "Breast Cancer Type 1"
+}
+// Respuesta: 400 Bad Request
+// "El símbolo del gen es requerido"
+```
+
+## Seguridad
+
+El microservicio implementa varias medidas de seguridad:
+
+- **Helmet**: Protección de headers HTTP
+- **CORS**: Control de acceso entre orígenes
+- **Validación de datos**: Prevención de inyección SQL
+- **Prepared Statements**: Uso de consultas parametrizadas
+- **Variables de entorno**: Credenciales sensibles fuera del código
+
+## Persistencia de Datos
+
+El microservicio utiliza **MySQL** con el patrón de diseño **Repository/Model**. Todas las consultas utilizan **prepared statements** para prevenir inyección SQL.
+
+### Conexión a la Base de Datos
+
+El pool de conexiones se configura en `src/config/database.js` con las siguientes características:
+
+- Pool de conexiones reutilizables
+- Límite de 10 conexiones simultáneas
+- Keep-alive habilitado
+- Manejo de errores de conexión
+
+## Integración con Microservicio de Clínica
+
+Este microservicio se integra con el **Microservicio de Clínica** para obtener información de pacientes. El campo `patientId` en `PatientVariantReport` hace referencia a un paciente del microservicio de clínica.
+
+Para consultar información del paciente, se debe hacer una petición HTTP al microservicio de clínica:
+
+```javascript
+const axios = require('axios');
+const clinicalServiceUrl = process.env.CLINICAL_SERVICE_URL;
+
+// Obtener información del paciente
+const response = await axios.get(`${clinicalServiceUrl}/api/patients/${patientId}`);
+const patient = response.data;
+```
+
+## Despliegue en Kubernetes
+
+El microservicio está diseñado para ser desplegado en **Kubernetes** con las siguientes características:
+
+- **Pods separados**: Escalable de forma independiente
+- **ConfigMaps**: Para variables de entorno no sensibles
+- **Secrets**: Para credenciales de base de datos
+- **Volúmenes persistentes**: Para la base de datos MySQL
+- **Health checks**: Endpoint `/health` para liveness y readiness probes
+
+### Ejemplo de Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: genomica-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: genomica
+  template:
+    metadata:
+      labels:
+        app: genomica
+    spec:
+      containers:
+      - name: genomica
+        image: genomica-service:1.0.0
+        ports:
+        - containerPort: 3002
+        env:
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: genomica-config
+              key: db_host
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: genomica-secrets
+              key: db_password
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3002
+          initialDelaySeconds: 5
+          periodSeconds: 5
+```
+
+## Testing
+
+Para probar el microservicio, puedes usar herramientas como:
+
+- **Postman**: Importar la colección desde Swagger
+- **Insomnia**: Importar la especificación OpenAPI
+- **curl**: Comandos desde la terminal
+- **Swagger UI**: Interfaz web interactiva
+
+## Troubleshooting
+
+### Error de conexión a MySQL
+
+```
+❌ Error al conectar con la base de datos: ECONNREFUSED
+```
+
+**Solución**: Verificar que MySQL esté ejecutándose y las credenciales en `.env` sean correctas.
+
+### Puerto ya en uso
+
+```
+Error: listen EADDRINUSE: address already in use :::3002
+```
+
+**Solución**: Cambiar el puerto en `.env` o detener el proceso que está usando el puerto 3002.
+
+### Error de validación
+
+```
+400 Bad Request: Error de validación
+```
+
+**Solución**: Revisar la documentación Swagger para ver los campos requeridos y sus formatos.
+
+## Licencia
+
+Este proyecto es parte del sistema GenoSentinel desarrollado para fines académicos.
+
+## Contacto
+
+Para preguntas o soporte, contactar al equipo de desarrollo mariana y karen.
