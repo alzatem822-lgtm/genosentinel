@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
-import { LoginInput, UserCreateInput } from '../models/user.model';
+import { LoginInput, UserCreateInput, VerifyInput } from '../models/user.model';
 
 export class AuthController {
   // Registrar nuevo usuario
@@ -17,25 +17,77 @@ export class AuthController {
         return;
       }
 
-      if (userData.password.length < 6) {
+      const result = await AuthService.register(userData);
+
+      if (!result.success) {
+        res.status(400).json(result);
+        return;
+      }
+
+      res.status(201).json(result);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  }
+
+  // Verificar código de email
+  static async verifyCode(req: Request, res: Response): Promise<void> {
+    try {
+      const verifyData: VerifyInput = req.body;
+
+      // Validaciones básicas
+      if (!verifyData.email || !verifyData.code) {
         res.status(400).json({
           success: false,
-          message: 'La contraseña debe tener al menos 6 caracteres'
+          message: 'Email y código son requeridos'
         });
         return;
       }
 
-      const user = await AuthService.register(userData);
-      
-      res.status(201).json({
-        success: true,
-        message: 'Usuario registrado exitosamente',
-        data: user
-      });
+      const result = await AuthService.verifyCode(verifyData);
+
+      if (!result.success) {
+        res.status(400).json(result);
+        return;
+      }
+
+      res.status(200).json(result);
     } catch (error: any) {
-      res.status(400).json({
+      res.status(500).json({
         success: false,
-        message: error.message || 'Error al registrar usuario'
+        message: 'Error interno del servidor'
+      });
+    }
+  }
+
+  // Reenviar código de verificación
+  static async resendVerification(req: Request, res: Response): Promise<void> {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        res.status(400).json({
+          success: false,
+          message: 'Email es requerido'
+        });
+        return;
+      }
+
+      const result = await AuthService.resendVerificationCode(email);
+
+      if (!result.success) {
+        res.status(400).json(result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
       });
     }
   }

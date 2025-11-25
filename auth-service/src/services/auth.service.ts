@@ -1,44 +1,165 @@
 import { dbPool } from '../config/database.config';
 import { BcryptUtils } from '../utils/bcrypt.utils';
 import { JwtUtils } from '../utils/jwt.utils';
-import { User, UserCreateInput, UserResponse, LoginInput, LoginResponse, toUserResponse } from '../models/user.model';
+import { EmailService } from './email.service';
+import { User, UserCreateInput, UserResponse, LoginInput, LoginResponse, toUserResponse, VerifyInput } from '../models/user.model';
 
 export class AuthService {
-  // Registrar nuevo usuario
-  static async register(userData: UserCreateInput): Promise<UserResponse> {
+  // Registrar nuevo usuario con verificación
+  static async register(userData: UserCreateInput): Promise<{success: boolean; message: string; user?: UserResponse}> {
     const { email, password } = userData;
 
-    // Verificar si el usuario ya existe
-    const [existingUsers] = await dbPool.execute(
-      'SELECT id FROM users WHERE email = ?',
-      [email]
-    );
+    try {
+      // Verificar si el usuario ya existe
+      const [existingUsers] = await dbPool.execute(
+        'SELECT id FROM users WHERE email = ?',
+        [email]
+      );
 
-    if ((existingUsers as any[]).length > 0) {
-      throw new Error('El usuario ya existe');
+      if ((existingUsers as any[]).length > 0) {
+        return {
+          success: false,
+          message: 'El usuario ya existe'
+        };
+      }
+
+      // Validar contraseña
+      if (!BcryptUtils.validatePasswordStrength(password)) {
+        return {
+          success: false,
+          message: 'La contraseña debe tener al menos 8 caracteres, mayúsculas, minúsculas y números'
+        };
+      }
+
+      // Hash de la contraseña
+      const passwordHash = await BcryptUtils.hashPassword(password);
+      
+      // Generar código de verificación
+      const verificationCode = EmailService.generateVerificationCode();
+      const verificationExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
+
+      // Crear usuario (no verificado)
+      const userId = require('crypto').randomUUID();
+      await dbPool.execute(
+        'INSERT INTO users (id, email, password_hash, verification_code, verification_expires) VALUES (?, ?, ?, ?, ?)',
+        [userId, email, passwordHash, verificationCode, verificationExpires]
+      );
+
+      // Enviar código de verificación
+      const emailSent = await EmailService.sendVerificationCode(email, verificationCode);
+
+      // Obtener usuario creado
+      const [users] = await dbPool.execute(
+        'SELECT * FROM users WHERE id = ?',
+        [userId]
+      );
+
+      const user = (users as User[])[0];
+
+      return {
+        success: true,
+        message: emailSent 
+          ? 'Usuario registrado. Revisa tu email para el código de verificación.'
+          : 'Usuario registrado, pero error enviando email. Contacta soporte.',
+        user: toUserResponse(user)
+      };
+    } catch (error: any) {
+      console.error('Error en registro:', error);
+      return {
+        success: false,
+        message: 'Error interno del servidor'
+      };
     }
-
-    // Hash de la contraseña
-    const passwordHash = await BcryptUtils.hashPassword(password);
-
-    // Crear usuario
-    const userId = require('crypto').randomUUID();
-    const [result] = await dbPool.execute(
-      'INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)',
-      [userId, email, passwordHash]
-    );
-
-    // Obtener usuario creado
-    const [users] = await dbPool.execute(
-      'SELECT * FROM users WHERE id = ?',
-      [userId]
-    );
-
-    const user = (users as User[])[0];
-    return toUserResponse(user);
   }
 
-  // Login de usuario
+  // Verificar código de email
+  static async verifyCode(verifyData: VerifyInput): Promise<{success: boolean; message: string; user?: UserResponse}> {
+    const { email, code } = verifyData;
+
+    try {
+      // Buscar usuario con código válido
+      const [users] = await dbPool.execute(
+        'SELECT * FROM users WHERE email = ? AND verification_code = ? AND verification_expires > NOW()',
+        [email, code]
+      );
+
+      const user = (users as User[])[0];
+      if (!user) {
+        return {
+          success: false,
+          message: 'Código inválido o expirado'
+        };
+      }
+
+      // Marcar usuario como verificado y limpiar código
+      await dbPool.execute(
+        'UPDATE users SET verified = true, verification_code = NULL, verification_expires = NULL WHERE id = ?',
+        [user.id]
+      );
+
+      // Enviar email de bienvenida
+      await EmailService.sendWelcomeEmail(user.email, user.email.split('@')[0]);
+
+      return {
+        success: true,
+        message: 'Cuenta verificada exitosamente',
+        user: toUserResponse({ ...user, verified: true })
+      };
+    } catch (error: any) {
+      console.error('Error en verificación:', error);
+      return {
+        success: false,
+        message: 'Error interno del servidor'
+      };
+    }
+  }
+
+  // Reenviar código de verificación
+  static async resendVerificationCode(email: string): Promise<{success: boolean; message: string}> {
+    try {
+      // Buscar usuario no verificado
+      const [users] = await dbPool.execute(
+        'SELECT * FROM users WHERE email = ? AND verified = false',
+        [email]
+      );
+
+      const user = (users as User[])[0];
+      if (!user) {
+        return {
+          success: false,
+          message: 'Usuario no encontrado o ya verificado'
+        };
+      }
+
+      // Generar nuevo código
+      const verificationCode = EmailService.generateVerificationCode();
+      const verificationExpires = new Date(Date.now() + 15 * 60 * 1000);
+
+      // Actualizar código en BD
+      await dbPool.execute(
+        'UPDATE users SET verification_code = ?, verification_expires = ? WHERE id = ?',
+        [verificationCode, verificationExpires, user.id]
+      );
+
+      // Enviar nuevo código
+      const emailSent = await EmailService.sendVerificationCode(email, verificationCode);
+
+      return {
+        success: true,
+        message: emailSent 
+          ? 'Código de verificación reenviado'
+          : 'Error enviando email. Contacta soporte.'
+      };
+    } catch (error: any) {
+      console.error('Error reenviando código:', error);
+      return {
+        success: false,
+        message: 'Error interno del servidor'
+      };
+    }
+  }
+
+  // Login de usuario (solo usuarios verificados)
   static async login(loginData: LoginInput): Promise<LoginResponse> {
     const { email, password } = loginData;
 
@@ -53,6 +174,14 @@ export class AuthService {
       return {
         success: false,
         message: 'Credenciales inválidas'
+      };
+    }
+
+    // Verificar si la cuenta está verificada
+    if (!user.verified) {
+      return {
+        success: false,
+        message: 'Cuenta no verificada. Revisa tu email para el código de verificación.'
       };
     }
 

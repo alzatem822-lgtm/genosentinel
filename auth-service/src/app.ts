@@ -5,6 +5,7 @@ import authRoutes from './routes/auth.routes';
 import { errorHandler } from './middleware/auth.middleware';
 import { envConfig } from './config/env.config';
 import { testConnection } from './config/database.config';
+import { EmailService } from './services/email.service';
 
 class App {
   public app: express.Application;
@@ -15,6 +16,7 @@ class App {
     this.initializeRoutes();
     this.initializeErrorHandling();
     this.initializeDatabase();
+    this.initializeServices(); // 👈 NUEVO MÉTODO AGREGADO
   }
 
   private initializeMiddlewares(): void {
@@ -69,6 +71,12 @@ class App {
     } catch (error) {
       console.error('❌ Error inicializando base de datos:', error);
     }
+  }
+
+  private initializeServices(): void {
+    // Configurar SendGrid
+    EmailService.configure(process.env.SENDGRID_API_KEY || '');
+    console.log('📧 Servicio de email configurado');
   }
 
   public getServer(): express.Application {

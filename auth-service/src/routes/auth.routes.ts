@@ -10,6 +10,8 @@ router.use(requestLogger);
 
 // ==================== RUTAS PÚBLICAS ====================
 router.post('/register', AuthController.register);
+router.post('/verify', AuthController.verifyCode); // 👈 NUEVA
+router.post('/resend-verification', AuthController.resendVerification); // 👈 NUEVA
 router.post('/login', AuthController.login);
 router.post('/validate', AuthController.validateToken);
 router.get('/health', AuthController.healthCheck);
@@ -82,6 +84,7 @@ router.get('/gateway-test', (req, res) => {
     features: [
       'Autenticación JWT',
       'Registro de usuarios',
+      'Verificación por email', // 👈 ACTUALIZADA
       'Validación de tokens',
       'Health checks',
       'API Gateway con enrutamiento',

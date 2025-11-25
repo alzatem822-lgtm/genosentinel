@@ -2,6 +2,9 @@ export interface User {
   id: string;
   email: string;
   password_hash: string;
+  verified: boolean;
+  verification_code: string | null;
+  verification_expires: Date | null;
   created_at: Date;
 }
 
@@ -13,6 +16,7 @@ export interface UserCreateInput {
 export interface UserResponse {
   id: string;
   email: string;
+  verified: boolean;
   created_at: Date;
 }
 
@@ -28,11 +32,17 @@ export interface LoginResponse {
   user?: UserResponse;
 }
 
+export interface VerifyInput {
+  email: string;
+  code: string;
+}
+
 // Función para convertir User a UserResponse (sin password)
 export const toUserResponse = (user: User): UserResponse => {
   return {
     id: user.id,
     email: user.email,
+    verified: user.verified,
     created_at: user.created_at
   };
 };
