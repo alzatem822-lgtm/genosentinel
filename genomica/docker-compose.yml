@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  genomica-api:
+    build: .
+    container_name: genomica_api
+    restart: always
+    env_file: .env
+    ports:
+      - "3002:3002"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+    networks:
+      - genomica-net
+
+  mysql:
+    image: mysql:8.0
+    container_name: genomica_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: karentorregob03*
+      MYSQL_DATABASE: genomica_db
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - genomica-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+networks:
+  genomica-net:
+
+volumes:
+  mysql_data:
