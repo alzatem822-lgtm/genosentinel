@@ -1,0 +1,46 @@
+services:
+  clinical-service:
+    build: .
+    ports:
+      - "3020:3020"
+    environment:
+      - DB_HOST=clinical-db
+      - DB_PORT=3306
+      - DB_USER=clinical_user  # Cambiar de root a usuario específico
+      - DB_PASSWORD=clinical_password
+      - DB_NAME=clinical_db
+      - NODE_ENV=development
+    depends_on:
+      clinical-db:
+        condition: service_healthy
+    networks:
+      - clinical-network
+
+  clinical-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: clinical_db
+      MYSQL_USER: clinical_user
+      MYSQL_PASSWORD: clinical_password
+    ports:
+      - "3308:3306"
+    networks:
+      - clinical-network
+    volumes:
+      - clinical_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "clinical_user", "-pclinical_password"]
+      timeout: 20s
+      retries: 10
+      start_period: 40s
+    command: 
+      - --default-authentication-plugin=mysql_native_password
+      - --bind-address=0.0.0.0
+
+volumes:
+  clinical_db_data:
+
+networks:
+  clinical-network:
+    driver: bridge
