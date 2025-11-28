@@ -1,32 +1,19 @@
-# Usar imagen oficial de Node.js
 FROM node:18-alpine
 
-# Establecer directorio de trabajo
 WORKDIR /app
 
-# Copiar archivos de configuración
-COPY package*.json ./
-COPY tsconfig.json ./
+# Copiar package.json e instalar dependencias
+COPY package.json ./
+RUN npm install --production
 
-# Instalar dependencias - 👈 CAMBIADO (sin --only=production)
-RUN npm ci
+# Copiar código compilado
+COPY dist/ ./dist/
 
-# Copiar código fuente
-COPY src/ ./src/
-
-# Compilar TypeScript a JavaScript
-RUN npm run build
+# Copiar variables de entorno
+COPY .env.docker ./.env
 
 # Exponer puerto
 EXPOSE 3010
 
-# Variables de entorno por defecto
-ENV NODE_ENV=production
-ENV PORT=3010
-
-# Comando para ejecutar la aplicación
+# Comando de inicio
 CMD ["node", "dist/server.js"]
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node dist/health-check.js || exit 1

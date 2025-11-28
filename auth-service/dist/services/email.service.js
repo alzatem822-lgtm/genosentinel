@@ -1,46 +1,41 @@
-import sgMail from '@sendgrid/mail';
-
-export class EmailService {
-  private static isConfigured = false;
-
-  // Configurar SendGrid
-  static configure(apiKey: string): void {
-    if (apiKey && apiKey !== 'your_sendgrid_api_key_here') {
-      sgMail.setApiKey(apiKey);
-      this.isConfigured = true;
-      console.log('✅ SendGrid configurado correctamente');
-      console.log(`🔑 API Key: ${apiKey.substring(0, 10)}...`);
-    } else {
-      console.log('⚠️ SendGrid no configurado - Modo desarrollo');
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.EmailService = void 0;
+const mail_1 = __importDefault(require("@sendgrid/mail"));
+class EmailService {
+    static configure(apiKey) {
+        if (apiKey && apiKey !== 'your_sendgrid_api_key_here') {
+            mail_1.default.setApiKey(apiKey);
+            this.isConfigured = true;
+            console.log('✅ SendGrid configurado correctamente');
+            console.log(`🔑 API Key: ${apiKey.substring(0, 10)}...`);
+        }
+        else {
+            console.log('⚠️ SendGrid no configurado - Modo desarrollo');
+        }
     }
-  }
-
-  // Generar código de verificación
-  static generateVerificationCode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  }
-
-  // Enviar código de verificación
-  static async sendVerificationCode(email: string, verificationCode: string): Promise<boolean> {
-    if (!this.isConfigured) {
-      // Modo desarrollo: mostrar código en consola
-      console.log(`📧 [MODO DESARROLLO] Código de verificación para ${email}: ${verificationCode}`);
-      return true;
+    static generateVerificationCode() {
+        return Math.floor(100000 + Math.random() * 900000).toString();
     }
-
-    try {
-      const fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@genosentinel.com';
-      
-      console.log(`📧 Intentando enviar email:`);
-      console.log(`   To: ${email}`);
-      console.log(`   From: ${fromEmail}`);
-      console.log(`   API Key: ${process.env.SENDGRID_API_KEY?.substring(0, 10)}...`);
-
-      const msg = {
-        to: email,
-        from: fromEmail,
-        subject: '🔬 Verificación de Cuenta - GenoSentinel',
-        html: `
+    static async sendVerificationCode(email, verificationCode) {
+        if (!this.isConfigured) {
+            console.log(`📧 [MODO DESARROLLO] Código de verificación para ${email}: ${verificationCode}`);
+            return true;
+        }
+        try {
+            const fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@genosentinel.com';
+            console.log(`📧 Intentando enviar email:`);
+            console.log(`   To: ${email}`);
+            console.log(`   From: ${fromEmail}`);
+            console.log(`   API Key: ${process.env.SENDGRID_API_KEY?.substring(0, 10)}...`);
+            const msg = {
+                to: email,
+                from: fromEmail,
+                subject: '🔬 Verificación de Cuenta - GenoSentinel',
+                html: `
           <!DOCTYPE html>
           <html>
           <head>
@@ -201,39 +196,34 @@ export class EmailService {
           </body>
           </html>
         `,
-      };
-
-      await sgMail.send(msg);
-      console.log(`✅ Email de verificación profesional enviado a: ${email}`);
-      return true;
-    } catch (error: any) {
-      console.error('❌ ERROR DETALLADO SendGrid:');
-      console.error('   - Message:', error.message);
-      console.error('   - Code:', error.code);
-      console.error('   - Status:', error.response?.statusCode);
-      console.error('   - Body:', error.response?.body);
-      console.error('   - Headers:', error.response?.headers);
-      return false;
+            };
+            await mail_1.default.send(msg);
+            console.log(`✅ Email de verificación profesional enviado a: ${email}`);
+            return true;
+        }
+        catch (error) {
+            console.error('❌ ERROR DETALLADO SendGrid:');
+            console.error('   - Message:', error.message);
+            console.error('   - Code:', error.code);
+            console.error('   - Status:', error.response?.statusCode);
+            console.error('   - Body:', error.response?.body);
+            console.error('   - Headers:', error.response?.headers);
+            return false;
+        }
     }
-  }
-
-  // Enviar email de bienvenida
-  static async sendWelcomeEmail(email: string, userName: string): Promise<boolean> {
-    if (!this.isConfigured) {
-      console.log(`📧 [MODO DESARROLLO] Email de bienvenida para ${userName}`);
-      return true;
-    }
-
-    try {
-      const fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@genosentinel.com';
-      
-      console.log(`📧 Enviando email de bienvenida a: ${email}`);
-
-      const msg = {
-        to: email,
-        from: fromEmail,
-        subject: '🎉 ¡Bienvenido a GenoSentinel!',
-        html: `
+    static async sendWelcomeEmail(email, userName) {
+        if (!this.isConfigured) {
+            console.log(`📧 [MODO DESARROLLO] Email de bienvenida para ${userName}`);
+            return true;
+        }
+        try {
+            const fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@genosentinel.com';
+            console.log(`📧 Enviando email de bienvenida a: ${email}`);
+            const msg = {
+                to: email,
+                from: fromEmail,
+                subject: '🎉 ¡Bienvenido a GenoSentinel!',
+                html: `
           <!DOCTYPE html>
           <html>
           <head>
@@ -372,16 +362,17 @@ export class EmailService {
           </body>
           </html>
         `,
-      };
-
-      await sgMail.send(msg);
-      console.log(`✅ Email de bienvenida profesional enviado a: ${email}`);
-      return true;
-    } catch (error: any) {
-      console.error('❌ Error enviando email de bienvenida:', error.message);
-      return false;
+            };
+            await mail_1.default.send(msg);
+            console.log(`✅ Email de bienvenida profesional enviado a: ${email}`);
+            return true;
+        }
+        catch (error) {
+            console.error('❌ Error enviando email de bienvenida:', error.message);
+            return false;
+        }
     }
-  }
 }
-
-export default EmailService;
+exports.EmailService = EmailService;
+EmailService.isConfigured = false;
+exports.default = EmailService;
