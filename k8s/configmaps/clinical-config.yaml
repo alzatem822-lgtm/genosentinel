@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clinical-config
+  namespace: genosentinel
+data:
+  # Configuración del servicio
+  SERVICE_PORT: "3020"
+  NODE_ENV: "production"
+  
+  # Configuración de base de datos
+  DB_HOST: "clinical-mysql-service"
+  DB_PORT: "3306"
+  DB_NAME: "clinical_db"
+  
+  # Configuración de la aplicación
+  CORS_ORIGIN: "http://localhost:3000,http://localhost:3010"
+  LOG_LEVEL: "info"

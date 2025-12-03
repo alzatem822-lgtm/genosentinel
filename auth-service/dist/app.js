@@ -45,6 +45,11 @@ class App {
             });
         });
         this.app.use('/auth', auth_routes_1.default);
+        
+        // 👇 AGREGAR ESTAS 2 LÍNEAS - REGISTRAR RUTAS DEL GATEWAY
+        const gateway_routes_1 = require("./routes/gateway.routes");
+        this.app.use('/api', gateway_routes_1.gatewayRouter);
+        
         console.log('🛣️  Rutas inicializadas correctamente');
         this.app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swagger_config_1.swaggerSpec));
         console.log('📚 Documentación Swagger disponible en /api-docs');

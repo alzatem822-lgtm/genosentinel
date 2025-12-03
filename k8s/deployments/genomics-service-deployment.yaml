@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: genomics-service-deployment
+  namespace: genosentinel
+  labels:
+    app: genomics-service
+    component: microservice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: genomics-service
+  template:
+    metadata:
+      labels:
+        app: genomics-service
+        component: microservice
+    spec:
+      containers:
+      - name: genomics-service
+        image: genosentinel-genomics-service:latest
+        ports:
+        - containerPort: 3002
+        envFrom:
+        - configMapRef:
+            name: genomics-config
+        - secretRef:
+            name: database-secrets
+        env:
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-secrets
+              key: mysql-password
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3002
+          initialDelaySeconds: 5
+          periodSeconds: 5

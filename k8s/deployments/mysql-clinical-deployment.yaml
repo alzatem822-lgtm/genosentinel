@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-clinical-deployment
+  namespace: genosentinel
+  labels:
+    app: mysql-clinical
+    component: database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-clinical
+  template:
+    metadata:
+      labels:
+        app: mysql-clinical
+        component: database
+    spec:
+      containers:
+      - name: mysql-clinical
+        image: mysql:8.0
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-secrets
+              key: mysql-root-password
+        - name: MYSQL_DATABASE
+          value: "clinical_db"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        volumeMounts:
+        - name: mysql-clinical-data
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-clinical-data
+        persistentVolumeClaim:
+          claimName: mysql-clinical-pvc

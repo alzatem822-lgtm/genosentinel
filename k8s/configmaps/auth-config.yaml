@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-config
+  namespace: genosentinel
+data:
+  # Configuración del servicio
+  SERVICE_PORT: "3010"
+  NODE_ENV: "production"
+  
+  # Configuración de base de datos
+  DB_HOST: "auth-mysql-service"
+  DB_PORT: "3306"
+  DB_NAME: "auth_db"
+  
+  # Configuración de JWT
+  JWT_SECRET: "genosentinel-super-secret-key-2024"
+  JWT_EXPIRES_IN: "24h"
+  
+  # Configuración de email (SendGrid)
+  EMAIL_SERVICE: "sendgrid"
+  EMAIL_FROM: "noreply@genosentinel.com"
+  
+  # Configuración del gateway
+  CLINICAL_SERVICE_URL: "http://clinical-service:3020"
+  GENOMICS_SERVICE_URL: "http://genomics-service:3002"

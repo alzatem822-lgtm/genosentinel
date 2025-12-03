@@ -1,44 +1,33 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.testConnection = exports.dbPool = exports.dbConfig = void 0;
-
-// MODO MEMORIA COMPLETO - SIN MYSQL
+const promise_1 = __importDefault(require("mysql2/promise"));
+// MYSQL REAL - CONEXIÓN A BASE DE DATOS REAL
 exports.dbConfig = {
-    host: 'memory',
-    user: 'memory', 
-    database: 'memory'
+    host: process.env.DB_HOST || 'auth-mysql',
+    port: parseInt(process.env.DB_PORT || '3306'),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || 'root',
+    database: process.env.DB_NAME || 'auth_db',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 };
-
-exports.dbPool = {
-    getConnection: async () => {
-        console.log('✅ Docker - Modo memoria activado (sin MySQL)');
-        return {
-            release: () => {
-                console.log('✅ Conexión de memoria liberada');
-            },
-            query: (sql, params) => {
-                console.log(`📦 Query simulada: ${sql}`);
-                // Simular respuesta para usuarios
-                if (sql && sql.includes('users')) {
-                    return Promise.resolve([
-                        [{ 
-                            id: 1, 
-                            email: 'admin@genosentinel.com', 
-                            password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password
-                            role: 'admin',
-                            created_at: new Date()
-                        }]
-                    ]);
-                }
-                return Promise.resolve([[{ id: 1, status: 'success' }]]);
-            }
-        };
-    }
-};
-
+// Pool de conexiones REAL
+exports.dbPool = promise_1.default.createPool(exports.dbConfig);
 const testConnection = async () => {
-    console.log('✅ Auth Service Dockerizado - Modo Memoria Activo');
-    console.log('✅ Sin MySQL - Todos los endpoints funcionan');
-    return true;
+    try {
+        const connection = await exports.dbPool.getConnection();
+        console.log('✅ MySQL REAL conectado exitosamente a auth_db');
+        connection.release();
+        return true;
+    }
+    catch (error) {
+        console.error('❌ Error conectando a MySQL REAL:', error.message);
+        return false;
+    }
 };
 exports.testConnection = testConnection;

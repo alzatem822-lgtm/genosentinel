@@ -1,25 +1,76 @@
 version: '3.8'
 
 services:
-  mysql:
+  # MySQL para Auth Service
+  auth-mysql:
     image: mysql:8.0
-    container_name: genosentinel-mysql
+    container_name: genosentinel-auth-mysql
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: genosentinel
+      MYSQL_DATABASE: auth_db
     ports:
       - "3307:3306"
     volumes:
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - mysql_data:/var/lib/mysql
+      - ./database/auth-init.sql:/docker-entrypoint-initdb.d/init.sql
+      - auth_mysql_data:/var/lib/mysql
     networks:
       - genosentinel-network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       timeout: 20s
       retries: 10
-      start_period: 40s  # 👈 Aumentado a 40s
+      start_period: 40s
+    command: 
+      - --default-authentication-plugin=mysql_native_password
+      - --bind-address=0.0.0.0
 
+  # MySQL para Clinical Service
+  clinical-mysql:
+    image: mysql:8.0
+    container_name: genosentinel-clinical-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: clinical_db
+    ports:
+      - "3308:3306"
+    volumes:
+      - ./database/clinical-init.sql:/docker-entrypoint-initdb.d/init.sql
+      - clinical_mysql_data:/var/lib/mysql
+    networks:
+      - genosentinel-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+      start_period: 40s
+    command: 
+      - --default-authentication-plugin=mysql_native_password
+      - --bind-address=0.0.0.0
+
+  # MySQL para Genomics Service
+  genomics-mysql:
+    image: mysql:8.0
+    container_name: genosentinel-genomics-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: genomica_db
+    ports:
+      - "3309:3306"
+    volumes:
+      - ./database/genomics-init.sql:/docker-entrypoint-initdb.d/init.sql
+      - genomics_mysql_data:/var/lib/mysql
+    networks:
+      - genosentinel-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+      start_period: 40s
+    command: 
+      - --default-authentication-plugin=mysql_native_password
+      - --bind-address=0.0.0.0
+
+  # Auth Service (Gateway)
   auth-service:
     build: ./auth-service
     container_name: genosentinel-auth
@@ -28,34 +79,72 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3010
-      - DB_HOST=mysql
+      - DB_HOST=auth-mysql
       - DB_PORT=3306
       - DB_USER=root
       - DB_PASSWORD=root
-      - DB_NAME=genosentinel
+      - DB_NAME=auth_db
       - JWT_SECRET=tu_jwt_secret_super_seguro_aqui_cambiar_en_produccion
       - JWT_EXPIRES_IN=24h
-      - CLINICAL_SERVICE_URL=http://clinical-service:3011
-      - GENOMICS_SERVICE_URL=http://genomics-service:3012
-      - SENDGRID_API_KEY=
+      - CLINICAL_SERVICE_URL=http://clinical-service:3020
+      - GENOMICS_SERVICE_URL=http://genomics-service:3002
+      - SENDGRID_API_KEY=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
       - SENDGRID_FROM_EMAIL=alzatem822@gmail.com
       - VERIFICATION_CODE_EXPIRY=15
     depends_on:
-      mysql:
+      auth-mysql:
         condition: service_healthy
     networks:
       - genosentinel-network
-    # 👇 AGREGAR PARA MAYOR ESTABILIDAD
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3010/auth/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s  # 👈 Dar más tiempo para que MySQL esté listo
+
+  # Clinical Service
+  clinical-service:
+    build: ./clinical-service
+    container_name: genosentinel-clinical
+    ports:
+      - "3020:3020"
+    environment:
+      - DB_HOST=clinical-mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=clinical_db
+      - NODE_ENV=development
+      - PORT=3020
+    depends_on:
+      clinical-mysql:
+        condition: service_healthy
+    networks:
+      - genosentinel-network
+    restart: unless-stopped
+
+  # Genomics Service
+  genomics-service:
+    build: ./genomics-service
+    container_name: genosentinel-genomics
+    ports:
+      - "3002:3002"
+    environment:
+      - DB_HOST=genomics-mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=genomica_db
+      - PORT=3002
+      - NODE_ENV=development
+      - CORS_ORIGIN=*
+    depends_on:
+      genomics-mysql:
+        condition: service_healthy
+    networks:
+      - genosentinel-network
+    restart: unless-stopped
 
 volumes:
-  mysql_data:
+  auth_mysql_data:
+  clinical_mysql_data:
+  genomics_mysql_data:
 
 networks:
   genosentinel-network:

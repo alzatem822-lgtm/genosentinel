@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-auth-pvc
+  namespace: genosentinel
+  labels:
+    app: mysql-auth
+    component: database
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard
+  # En producción usarías una clase de almacenamiento específica

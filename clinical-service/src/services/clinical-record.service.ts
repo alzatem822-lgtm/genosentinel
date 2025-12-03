@@ -39,10 +39,22 @@ export class ClinicalRecordService {
         throw new Error('Tipo de tumor no encontrado');
       }
 
+      // 👇 CONVERSIÓN DE FECHA - SOLUCIÓN DEFINITIVA
+      const dateObj = new Date(data.diagnosisDate);
+      if (isNaN(dateObj.getTime())) {
+        throw new Error('Formato de fecha inválido');
+      }
+      const mysqlDate = dateObj.toISOString().slice(0, 19).replace('T', ' ');
+      
+      Logger.debug('Fecha convertida a formato MySQL', { 
+        original: data.diagnosisDate, 
+        converted: mysqlDate 
+      });
+
       const [result] = await connection.execute(
         `INSERT INTO clinical_records (patientId, tumorTypeId, diagnosisDate, stage, treatmentProtocol) 
          VALUES (?, ?, ?, ?, ?)`,
-        [data.patientId, data.tumorTypeId, data.diagnosisDate, data.stage, data.treatmentProtocol]
+        [data.patientId, data.tumorTypeId, mysqlDate, data.stage, data.treatmentProtocol] // 👈 Usar mysqlDate
       );
 
       const [records] = await connection.execute(
@@ -57,7 +69,9 @@ export class ClinicalRecordService {
     } catch (error) {
       Logger.error('Error al crear registro clínico', error);
       if (error instanceof Error && 
-          (error.message === 'Paciente no encontrado' || error.message === 'Tipo de tumor no encontrado')) {
+          (error.message === 'Paciente no encontrado' || 
+           error.message === 'Tipo de tumor no encontrado' ||
+           error.message.includes('Formato de fecha inválido'))) {
         throw error;
       }
       throw new Error('No se pudo crear el registro clínico');

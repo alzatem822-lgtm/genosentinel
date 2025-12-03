@@ -8,7 +8,7 @@ const email_service_1 = require("./email.service");
 const user_model_1 = require("../models/user.model");
 class AuthService {
     static async register(userData) {
-        const { email, password } = userData;
+        const { email, password, name } = userData;
         try {
             const [existingUsers] = await database_config_1.dbPool.execute('SELECT id FROM users WHERE email = ?', [email]);
             if (existingUsers.length > 0) {
@@ -27,7 +27,7 @@ class AuthService {
             const verificationCode = email_service_1.EmailService.generateVerificationCode();
             const verificationExpires = new Date(Date.now() + 15 * 60 * 1000);
             const userId = require('crypto').randomUUID();
-            await database_config_1.dbPool.execute('INSERT INTO users (id, email, password_hash, verification_code, verification_expires) VALUES (?, ?, ?, ?, ?)', [userId, email, passwordHash, verificationCode, verificationExpires]);
+            await database_config_1.dbPool.execute('INSERT INTO users (id, email, password_hash, name, verification_code, verification_expires) VALUES (?, ?, ?, ?, ?, ?)', [userId, email, passwordHash, name, verificationCode, verificationExpires]);
             const emailSent = await email_service_1.EmailService.sendVerificationCode(email, verificationCode);
             const [users] = await database_config_1.dbPool.execute('SELECT * FROM users WHERE id = ?', [userId]);
             const user = users[0];
@@ -58,12 +58,12 @@ class AuthService {
                     message: 'Código inválido o expirado'
                 };
             }
-            await database_config_1.dbPool.execute('UPDATE users SET verified = true, verification_code = NULL, verification_expires = NULL WHERE id = ?', [user.id]);
+            await database_config_1.dbPool.execute('UPDATE users SET email_verified = true, verification_code = NULL, verification_expires = NULL WHERE id = ?', [user.id]);
             await email_service_1.EmailService.sendWelcomeEmail(user.email, user.email.split('@')[0]);
             return {
                 success: true,
                 message: 'Cuenta verificada exitosamente',
-                user: (0, user_model_1.toUserResponse)({ ...user, verified: true })
+                user: (0, user_model_1.toUserResponse)({ ...user, email_verified: true })
             };
         }
         catch (error) {
@@ -76,7 +76,7 @@ class AuthService {
     }
     static async resendVerificationCode(email) {
         try {
-            const [users] = await database_config_1.dbPool.execute('SELECT * FROM users WHERE email = ? AND verified = false', [email]);
+            const [users] = await database_config_1.dbPool.execute('SELECT * FROM users WHERE email = ? AND email_verified = false', [email]);
             const user = users[0];
             if (!user) {
                 return {
@@ -113,7 +113,7 @@ class AuthService {
                 message: 'Credenciales inválidas'
             };
         }
-        if (!user.verified) {
+        if (!user.email_verified) {
             return {
                 success: false,
                 message: 'Cuenta no verificada. Revisa tu email para el código de verificación.'

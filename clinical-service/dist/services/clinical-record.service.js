@@ -13,34 +13,64 @@ class ClinicalRecordService {
         try {
             logger_utils_1.Logger.info('Creando nuevo registro clínico', {
                 patientId: data.patientId,
-                tumorTypeId: data.tumorTypeId
+                tumorTypeId: data.tumorTypeId,
+                diagnosisDate: data.diagnosisDate
             });
-            // Verificar que el paciente existe
+
+            // 1. Verificar que el paciente existe
             const [patients] = await connection.execute('SELECT id FROM patients WHERE id = ?', [data.patientId]);
             if (patients.length === 0) {
                 throw new Error('Paciente no encontrado');
             }
-            // Verificar que el tipo de tumor existe
+
+            // 2. Verificar que el tipo de tumor existe
             const [tumorTypes] = await connection.execute('SELECT id FROM tumor_types WHERE id = ?', [data.tumorTypeId]);
             if (tumorTypes.length === 0) {
                 throw new Error('Tipo de tumor no encontrado');
             }
-            const [result] = await connection.execute(`INSERT INTO clinical_records (patientId, tumorTypeId, diagnosisDate, stage, treatmentProtocol) 
-         VALUES (?, ?, ?, ?, ?)`, [data.patientId, data.tumorTypeId, data.diagnosisDate, data.stage, data.treatmentProtocol]);
-            const [records] = await connection.execute('SELECT * FROM clinical_records WHERE id = ?', [result.insertId]);
+
+            // 3. Convertir fecha a formato MySQL
+            const dateObj = new Date(data.diagnosisDate);
+            if (isNaN(dateObj.getTime())) {
+                throw new Error('Formato de fecha inválido');
+            }
+            const mysqlDate = dateObj.toISOString().slice(0, 19).replace('T', ' ');
+            
+            logger_utils_1.Logger.debug('Fecha convertida a MySQL format', { 
+                original: data.diagnosisDate, 
+                converted: mysqlDate 
+            });
+
+            // 4. Insertar registro
+            const [result] = await connection.execute(
+                `INSERT INTO clinical_records (patientId, tumorTypeId, diagnosisDate, stage, treatmentProtocol) 
+                 VALUES (?, ?, ?, ?, ?)`, 
+                [data.patientId, data.tumorTypeId, mysqlDate, data.stage, data.treatmentProtocol || null]
+            );
+
+            // 5. Obtener el registro creado
+            const [records] = await connection.execute(
+                'SELECT * FROM clinical_records WHERE id = ?', 
+                [result.insertId]
+            );
+            
             const record = records[0];
             logger_utils_1.Logger.info('Registro clínico creado exitosamente', { recordId: record.id });
             return record;
-        }
-        catch (error) {
+
+        } catch (error) {
             logger_utils_1.Logger.error('Error al crear registro clínico', error);
-            if (error instanceof Error &&
-                (error.message === 'Paciente no encontrado' || error.message === 'Tipo de tumor no encontrado')) {
+            
+            // Re-lanzar errores de validación
+            if (error instanceof Error && 
+                (error.message === 'Paciente no encontrado' || 
+                 error.message === 'Tipo de tumor no encontrado' ||
+                 error.message.includes('Formato de fecha inválido'))) {
                 throw error;
             }
+            
             throw new Error('No se pudo crear el registro clínico');
-        }
-        finally {
+        } finally {
             connection.release();
         }
     }
